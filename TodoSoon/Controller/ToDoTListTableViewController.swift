@@ -10,23 +10,22 @@ import UIKit
 
 class ToDoTListTableViewController: UITableViewController {
     
+    // MARK: Variable instances
     var itemArray = [ItemModel]()
-    var defaults = UserDefaults.standard
-
+    let itemManager = ItemManager()
+    
+    // MARK: ViewCicle
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        if let items = defaults.array(forKey: "TodoListArray") as? [ItemModel] {
-            itemArray = items
-        }
+        itemArray = itemManager.loadItems()
     }
-   
+    
     // MARK: - Table view data source
-
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArray.count
     }
@@ -47,7 +46,9 @@ class ToDoTListTableViewController: UITableViewController {
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
+        itemManager.saveItems(itemArray)
         tableView.reloadData()
+        
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
@@ -66,7 +67,8 @@ class ToDoTListTableViewController: UITableViewController {
             
             self.itemArray.append(newItem)
             
-            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            self.itemManager.saveItems(self.itemArray)
+            
             self.tableView.reloadData()
         }
         alert.addTextField { (alertTextField) in
@@ -78,5 +80,6 @@ class ToDoTListTableViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
         
     }
-    
+   
+
 }
