@@ -59,14 +59,12 @@ class ToDoTListTableViewController: UITableViewController {
         var textField = UITextField()
         
         let alert = UIAlertController(title: "Add New ToDo Item", message: "", preferredStyle: .alert)
-        
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
             let newItem = ItemModel()
             newItem.title = textField.text!
             
             self.itemArray.append(newItem)
-            
             self.itemManager.saveItems(self.itemArray)
             
             self.tableView.reloadData()
@@ -78,7 +76,6 @@ class ToDoTListTableViewController: UITableViewController {
         }
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
-        
     }
    
 

@@ -17,7 +17,6 @@ class ItemManager {
         do {
             let data = try encoder.encode(array)
             try data.write(to: dataFilePath!)
-            print("data saved")
         }
         catch {
             print("Error encoding item array \(error)")
