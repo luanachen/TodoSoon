@@ -7,18 +7,21 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoTListTableViewController: UITableViewController {
     
     // MARK: Variable instances
-    var itemArray = [ItemModel]()
+    var itemArray = [Item]()
     let itemManager = ItemManager()
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+
     
     // MARK: ViewCicle
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        itemArray = itemManager.loadItems()
+        itemArray = itemManager.loadItems(in: context)
     }
     
     // MARK: - Table view data source
@@ -35,7 +38,6 @@ class ToDoTListTableViewController: UITableViewController {
         
         let item = itemArray[indexPath.row]
         cell.textLabel?.text = item.title
-        
         cell.accessoryType = item.done == true ? .checkmark : .none
         
         return cell
@@ -44,16 +46,18 @@ class ToDoTListTableViewController: UITableViewController {
     // MARK: - Table view delegate
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
         
-        itemManager.saveItems(itemArray)
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+
+        itemManager.saveItems(itemArray, context: context)
         tableView.reloadData()
         
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
     // MARK: - Actions
-    
     @IBAction func addButtonPressed(_ sender: Any) {
         
         var textField = UITextField()
@@ -61,11 +65,12 @@ class ToDoTListTableViewController: UITableViewController {
         let alert = UIAlertController(title: "Add New ToDo Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
-            let newItem = ItemModel()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             
             self.itemArray.append(newItem)
-            self.itemManager.saveItems(self.itemArray)
+            self.itemManager.saveItems(self.itemArray, context: self.context)
             
             self.tableView.reloadData()
         }
@@ -77,6 +82,35 @@ class ToDoTListTableViewController: UITableViewController {
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
     }
-   
-
+    
+    
 }
+
+// MARK: UISearchBarDelegate
+
+extension ToDoTListTableViewController: UISearchBarDelegate {
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let searchRequest : NSFetchRequest<Item> = Item.fetchRequest()
+        searchRequest.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        searchRequest.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        itemArray = itemManager.loadItems(in: context, with: searchRequest)
+        
+        tableView.reloadData()
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            itemArray = itemManager.loadItems(in: context)
+            tableView.reloadData()
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+    }
+}
+
+
+
+

@@ -6,35 +6,30 @@
 //  Copyright © 2018 lccj. All rights reserved.
 //
 
-import Foundation
+import UIKit
+import CoreData
 
 class ItemManager {
     
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist")
-    
-    func saveItems(_ array: [ItemModel]) {
-        let encoder = PropertyListEncoder()
+    func saveItems(_ array: [Item], context: NSManagedObjectContext) {
         do {
-            let data = try encoder.encode(array)
-            try data.write(to: dataFilePath!)
+            try context.save()
         }
         catch {
-            print("Error encoding item array \(error)")
+            print("Error saving context \(error)")
         }
     }
     
-    func loadItems() -> [ItemModel]{
-        var array = [ItemModel]()
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-                array = try decoder.decode([ItemModel].self, from: data)
-            }
-            catch {
-                print("Error decoding item array \(error)")
-            }
+    func loadItems(in context: NSManagedObjectContext, with request: NSFetchRequest<Item> = Item.fetchRequest()) -> [Item]{
+        var itemArray = [Item]()
+        do {
+            itemArray = try context.fetch(request)
         }
-        return array
+        catch {
+            print("Error fetching data from context \(error)")
+        }
+        
+        return itemArray
     }
 }
 
