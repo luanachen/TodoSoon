@@ -7,20 +7,19 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class ToDoTListTableViewController: UITableViewController {
     
     // MARK: Variable instances
-    var itemArray = [Item]()
-    let itemManager = ItemManager()
+   
+    var items: Results<Item>?
+    let realm = try! Realm()
     var selectedCategory : Category? {
         didSet {
-            let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@",  selectedCategory!.name!)
-            itemArray = itemManager.loadItems(in: context, by: categoryPredicate)
+            loadItems()
         }
     }
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     // MARK: ViewCicle
     override func viewDidLoad() {
@@ -34,31 +33,46 @@ class ToDoTListTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return itemArray.count
+        return items?.count ?? 1
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "toDoCell", for: indexPath)
         
-        let item = itemArray[indexPath.row]
-        cell.textLabel?.text = item.title
-        cell.accessoryType = item.done == true ? .checkmark : .none
-        
+        items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+        if let item = items?[indexPath.row] {
+            cell.textLabel?.text = item.title
+            cell.accessoryType = item.done == true ? .checkmark : .none
+        } else {
+            cell.textLabel?.text = "No Items Added"
+        }
         return cell
     }
     
     // MARK: - Table view delegate
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-//        context.delete(itemArray[indexPath.row])
-//        itemArray.remove(at: indexPath.row)
+        if let item = items?[indexPath.row] {
+            do{
+                try realm.write {
+                    item.done = !item.done
+                }
+            } catch {
+                print("Error saving done status, \(error)")
+            }
+        }
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
-
-        itemManager.saveItems(itemArray, context: context)
         tableView.reloadData()
         
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    // MARK: - Data Manipulation Methods
+    func loadItems() {
+        
+        items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
+        
+        tableView.reloadData()
     }
     
     // MARK: - Actions
@@ -69,13 +83,20 @@ class ToDoTListTableViewController: UITableViewController {
         let alert = UIAlertController(title: "Add New ToDo Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
-            let newItem = Item(context: self.context)
-            newItem.title = textField.text!
-            newItem.done = false
-            newItem.parentCategory = self.selectedCategory
-            
-            self.itemArray.append(newItem)
-            self.itemManager.saveItems(self.itemArray, context: self.context)
+            if let currentCategory = self.selectedCategory {
+                
+                //Saving with realm
+                do{
+                    try self.realm.write {
+                        let newItem = Item()
+                        newItem.title = textField.text!
+                        newItem.dateCreated = Date()
+                        currentCategory.items.append(newItem)
+                    }
+                } catch {
+                    print("Error saving new items \(error)")
+                }
+            }
             
             self.tableView.reloadData()
         }
@@ -88,7 +109,6 @@ class ToDoTListTableViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    
 }
 
 // MARK: UISearchBarDelegate
@@ -96,19 +116,16 @@ class ToDoTListTableViewController: UITableViewController {
 extension ToDoTListTableViewController: UISearchBarDelegate {
     
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        let searchRequest : NSFetchRequest<Item> = Item.fetchRequest()
-        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
-        searchRequest.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
         
-        itemArray = itemManager.loadItems(in: context, with: searchRequest, by: predicate)
-        
+        items = items?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "title", ascending: true)
+    
         tableView.reloadData()
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0 {
-            itemArray = itemManager.loadItems(in: context)
-            tableView.reloadData()
+            loadItems()
+            
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
