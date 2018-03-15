@@ -20,7 +20,10 @@ class ItemManager {
         }
     }
     
-    func loadItems(in context: NSManagedObjectContext, with request: NSFetchRequest<Item> = Item.fetchRequest()) -> [Item]{
+    func loadItems(in context: NSManagedObjectContext, with request: NSFetchRequest<Item> = Item.fetchRequest(), by predicate: NSPredicate? = nil) -> [Item]{
+        
+        request.predicate = predicate
+        
         var itemArray = [Item]()
         do {
             itemArray = try context.fetch(request)
