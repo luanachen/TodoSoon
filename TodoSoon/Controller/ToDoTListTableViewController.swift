@@ -9,10 +9,10 @@
 import UIKit
 import RealmSwift
 
-class ToDoTListTableViewController: UITableViewController {
+class ToDoTListTableViewController: SwipeTableViewController {
     
     // MARK: Variable instances
-   
+    
     var items: Results<Item>?
     let realm = try! Realm()
     var selectedCategory : Category? {
@@ -37,7 +37,8 @@ class ToDoTListTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "toDoCell", for: indexPath)
+        
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         if let item = items?[indexPath.row] {
@@ -74,6 +75,20 @@ class ToDoTListTableViewController: UITableViewController {
         
         tableView.reloadData()
     }
+    
+    // MARK: - Delete data from swipe
+    override func updateModel(at indexPath: IndexPath) {
+        if let itemForDeletion = self.items?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(itemForDeletion)
+                }
+            } catch {
+                print("Error deleting items, \(error)")
+            }
+        }
+    }
+    
     
     // MARK: - Actions
     @IBAction func addButtonPressed(_ sender: Any) {
@@ -118,7 +133,7 @@ extension ToDoTListTableViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         
         items = items?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "title", ascending: true)
-    
+        
         tableView.reloadData()
     }
     

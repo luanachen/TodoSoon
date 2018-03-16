@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import SwipeCellKit
 
-class CategoryTableViewController: UITableViewController {
+class CategoryTableViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     var categories: Results<Category>?
@@ -31,7 +32,7 @@ class CategoryTableViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "categoryCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
         
@@ -44,7 +45,7 @@ class CategoryTableViewController: UITableViewController {
         let destinationVC = segue.destination as! ToDoTListTableViewController
         
         if let indexPath = tableView.indexPathForSelectedRow {
-          destinationVC.selectedCategory = categories?[indexPath.row]
+            destinationVC.selectedCategory = categories?[indexPath.row]
         }
     }
     
@@ -72,6 +73,19 @@ class CategoryTableViewController: UITableViewController {
         tableView.reloadData()
     }
     
+    // MARK: - Delete data from swipe
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryForDeletion = self.categories?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryForDeletion)
+                }
+            } catch {
+                print("Error deleting category, \(error)")
+            }
+        }
+    }
+    
     
     // MARK: - Actions
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -92,3 +106,5 @@ class CategoryTableViewController: UITableViewController {
     }
     
 }
+
+
