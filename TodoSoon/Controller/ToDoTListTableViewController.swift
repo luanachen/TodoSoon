@@ -13,9 +13,9 @@ import ChameleonFramework
 class ToDoTListTableViewController: SwipeTableViewController {
     
     // MARK: Variable instances
-    
     var items: Results<Item>?
     let realm = try! Realm()
+    
     var selectedCategory : Category? {
         didSet {
             loadItems()
@@ -23,7 +23,6 @@ class ToDoTListTableViewController: SwipeTableViewController {
     }
     
     @IBOutlet weak var searchBar: UISearchBar!
-    
     
     // MARK: ViewCicle
     override func viewDidLoad() {
@@ -53,10 +52,6 @@ class ToDoTListTableViewController: SwipeTableViewController {
     }
     
     // MARK: - Table view data source
-    override func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
-    }
-    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items?.count ?? 1
     }
@@ -65,13 +60,19 @@ class ToDoTListTableViewController: SwipeTableViewController {
         
         let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        items = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         if let item = items?[indexPath.row] {
             cell.textLabel?.text = item.title
+            
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .none
+            dateFormatter.locale = Locale(identifier: "en_US")
+            cell.detailTextLabel?.text = dateFormatter.string(from: item.dateCreated!)
             
             if let colour = UIColor(hexString: selectedCategory!.colour)?.darken(byPercentage: (CGFloat(indexPath.row) / CGFloat(items!.count))) {
                 cell.backgroundColor = colour
                 cell.textLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
+                cell.detailTextLabel?.textColor = ContrastColorOf(colour, returnFlat: true)
             }
             cell.accessoryType = item.done == true ? .checkmark : .none
         } else {
@@ -92,9 +93,39 @@ class ToDoTListTableViewController: SwipeTableViewController {
                 print("Error saving done status, \(error)")
             }
         }
-        
         tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    // MARK: - Actions
+    @IBAction func addButtonPressed(_ sender: Any) {
+        
+        var textField = UITextField()
+        let alert = UIAlertController(title: "Add New ToDo Item", message: "", preferredStyle: .alert)
+        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            
+            if let currentCategory = self.selectedCategory {
+                
+                //Saving with realm
+                do{
+                    try self.realm.write {
+                        let newItem = Item()
+                        newItem.title = textField.text!
+                        newItem.dateCreated = Date()
+                        currentCategory.items.append(newItem)
+                    }
+                } catch {
+                    print("Error saving new items \(error)")
+                }
+            }
+            self.tableView.reloadData()
+        }
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new item"
+            textField = alertTextField
+        }
+        alert.addAction(action)
+        present(alert, animated: true, completion: nil)
     }
     
     // MARK: - Data Manipulation Methods
@@ -116,58 +147,18 @@ class ToDoTListTableViewController: SwipeTableViewController {
         }
     }
     
-    
-    // MARK: - Actions
-    @IBAction func addButtonPressed(_ sender: Any) {
-        
-        var textField = UITextField()
-        
-        let alert = UIAlertController(title: "Add New ToDo Item", message: "", preferredStyle: .alert)
-        let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
-            
-            if let currentCategory = self.selectedCategory {
-                
-                //Saving with realm
-                do{
-                    try self.realm.write {
-                        let newItem = Item()
-                        newItem.title = textField.text!
-                        newItem.dateCreated = Date()
-                        currentCategory.items.append(newItem)
-                    }
-                } catch {
-                    print("Error saving new items \(error)")
-                }
-            }
-            
-            self.tableView.reloadData()
-        }
-        alert.addTextField { (alertTextField) in
-            alertTextField.placeholder = "Create new item"
-            textField = alertTextField
-            print(alertTextField.text!)
-        }
-        alert.addAction(action)
-        present(alert, animated: true, completion: nil)
-    }
-    
 }
 
 // MARK: UISearchBarDelegate
-
 extension ToDoTListTableViewController: UISearchBarDelegate {
-    
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        
         items = items?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "title", ascending: true)
-        
         tableView.reloadData()
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0 {
             loadItems()
-            
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
